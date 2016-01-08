@@ -742,7 +742,7 @@ function array_mergev(array $arrayv) {
     if (!is_array($item)) {
       throw new InvalidArgumentException(
         pht(
-          'Expected all items passed to %s to be arrays, but '.
+          'Expected all items passed to `%s` to be arrays, but '.
           'argument with key "%s" has type "%s".',
           __FUNCTION__.'()',
           $key,
@@ -913,7 +913,7 @@ function phutil_loggable_string($string) {
  * @param resource  Socket or pipe stream.
  * @param string    Bytes to write.
  * @return bool|int Number of bytes written, or `false` on any error (including
- *                  errors which `fpipe()` can not detect, like a broken pipe).
+ *                  errors which `fwrite()` can not detect, like a broken pipe).
  */
 function phutil_fwrite_nonblocking_stream($stream, $bytes) {
   if (!strlen($bytes)) {
@@ -1130,7 +1130,7 @@ function phutil_validate_json($value, $path = '') {
       if (!phutil_is_utf8($key)) {
         $full_key = $full_key.phutil_utf8ize($key);
         return pht(
-          'Dictionary key "%s" is not valid UTF8, and can not be JSON encoded.',
+          'Dictionary key "%s" is not valid UTF8, and cannot be JSON encoded.',
           $full_key);
       }
 
@@ -1152,7 +1152,7 @@ function phutil_validate_json($value, $path = '') {
           $display);
       } else {
         return pht(
-          'Dictionary value at key "%s" is not valid UTF8, and can not be '.
+          'Dictionary value at key "%s" is not valid UTF8, and cannot be '.
           'JSON encoded: %s',
           $path,
           $display);
@@ -1359,4 +1359,51 @@ function phutil_fnmatch($glob, $path) {
 
   $regex = '(\A'.$regex.'\z)';
   return (bool)preg_match($regex, $path);
+}
+
+
+/**
+ * Compare two hashes for equality.
+ *
+ * This function defuses two attacks: timing attacks and type juggling attacks.
+ *
+ * In a timing attack, the attacker observes that strings which match the
+ * secret take slightly longer to fail to match because more characters are
+ * compared. By testing a large number of strings, they can learn the secret
+ * character by character. This defuses timing attacks by always doing the
+ * same amount of work.
+ *
+ * In a type juggling attack, an attacker takes advantage of PHP's type rules
+ * where `"0" == "0e12345"` for any exponent. A portion of of hexadecimal
+ * hashes match this pattern and are vulnerable. This defuses this attack by
+ * performing bytewise character-by-character comparison.
+ *
+ * It is questionable how practical these attacks are, but they are possible
+ * in theory and defusing them is straightforward.
+ *
+ * @param string First hash.
+ * @param string Second hash.
+ * @return bool True if hashes are identical.
+ */
+function phutil_hashes_are_identical($u, $v) {
+  if (!is_string($u)) {
+    throw new Exception(pht('First hash argument must be a string.'));
+  }
+
+  if (!is_string($v)) {
+    throw new Exception(pht('Second hash argument must be a string.'));
+  }
+
+  if (strlen($u) !== strlen($v)) {
+    return false;
+  }
+
+  $len = strlen($v);
+
+  $bits = 0;
+  for ($ii = 0; $ii < $len; $ii++) {
+    $bits |= (ord($u[$ii]) ^ ord($v[$ii]));
+  }
+
+  return ($bits === 0);
 }

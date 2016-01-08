@@ -68,34 +68,16 @@ NEWLINE ("\r\n"|"\n"|"\r")
 
  /* Open / close PHP + inline HTML */
 <INITIAL>{
-  "<?php"([ \t]|{NEWLINE}) {
+  "<?php"/([ \t]|{NEWLINE}) {
     yy_scan_newlines(yytext + 5, yyg);
     // the state transition will be done in yy_token()
     tok(T_OPEN_TAG);
   }
   "<?" {
-    if (yyextra->short_tags) {
-      tok(T_OPEN_TAG);
-    } else {
-      tok(T_INLINE_HTML);
-    }
+    tok(T_OPEN_TAG);
   }
   "<?=" {
     tok(T_OPEN_TAG_WITH_ECHO);
-  }
-  "<%" {
-    if (yyextra->asp_tags) {
-      tok(T_OPEN_TAG);
-    } else {
-      tok(T_INLINE_HTML);
-    }
-  }
-  "<%=" {
-    if (yyextra->asp_tags) {
-      tok(T_OPEN_TAG_WITH_ECHO);
-    } else {
-      tok(T_INLINE_HTML);
-    }
   }
   "<"|[^<]* {
     yy_scan_newlines(yytext, yyg);
@@ -106,14 +88,6 @@ NEWLINE ("\r\n"|"\n"|"\r")
   ("?>"|"</script"{WHITESPACE}*">"){NEWLINE}? {
     yy_scan_newlines(yytext + 2, yyg);
     tok(T_CLOSE_TAG);
-  }
-  "%>" {
-    if (yyextra->asp_tags) {
-      tok(T_CLOSE_TAG);
-    } else {
-      yyless(1);
-      tok(yytext[0]);
-    }
   }
 }
 
@@ -318,7 +292,6 @@ NEWLINE ("\r\n"|"\n"|"\r")
 
  /* (HERE|NOW)DOC's */
 <PHP,PHP_NO_RESERVED_WORDS,PHP_NO_RESERVED_WORDS_PERSIST>b?"<<<"{TABS_AND_SPACES} {
-
   push_state(PHP_HEREDOC_START);
   yyextra->heredoc_yyleng = yyleng;
   yymore();
@@ -458,11 +431,6 @@ static int yy_token(int tok, yyguts_t* yyg) {
 
     case T_PAAMAYIM_NEKUDOTAYIM:
       push_state(PHP_NO_RESERVED_WORDS);
-      break;
-
-    case '{':
-      // not used anymore
-      yyextra->curly_stack.push(tok);
       break;
   }
 #ifdef DEBUG
